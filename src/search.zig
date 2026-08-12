@@ -5,6 +5,7 @@ pub const Options = struct {
     ignore_case: bool = false,
     dry_run: bool = false,
     quiet: bool = false,
+    no_skip_list: bool = false,
     exts: []const []const u8 = &.{},
 };
 

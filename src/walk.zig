@@ -5,7 +5,8 @@ const Dir = std.Io.Dir;
 
 const skip_dirs = [_][]const u8{ ".git", "node_modules", ".zig-cache", "zig-out", "target", ".svn", ".hg" };
 
-fn shouldSkipDir(name: []const u8) bool {
+fn shouldSkipDir(name: []const u8, no_skip_list: bool) bool {
+    if (no_skip_list) return false;
     for (skip_dirs) |d| {
         if (std.mem.eql(u8, name, d)) return true;
     }
@@ -89,7 +90,7 @@ fn collect(
     var it = dir.iterate();
     while (try it.next(io)) |entry| {
         if (entry.kind == .directory) {
-            if (shouldSkipDir(entry.name)) continue;
+            if (shouldSkipDir(entry.name, opts.no_skip_list)) continue;
             const sub = try std.fs.path.join(gpa, &.{ dir_path, entry.name });
             defer gpa.free(sub);
             try collect(gpa, io, sub, opts, files, stderr);

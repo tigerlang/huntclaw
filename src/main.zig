@@ -15,6 +15,7 @@ const usage =
     \\  -n, --dry-run         show what would change without writing
     \\  -e, --ext <ext>       only process files with this extension (repeatable)
     \\  -q, --quiet           suppress per-file output
+    \\  -n-s-l, --no-skip-list  do not skip .git, node_modules, and other default dirs
     \\  -h, --help            show this help
     \\
 ;
@@ -60,6 +61,8 @@ pub fn main(init: std.process.Init) !u8 {
             opts.dry_run = true;
         } else if (std.mem.eql(u8, a, "-q") or std.mem.eql(u8, a, "--quiet")) {
             opts.quiet = true;
+        } else if (std.mem.eql(u8, a, "-n-s-l") or std.mem.eql(u8, a, "--no-skip-list")) {
+            opts.no_skip_list = true;
         } else if (std.mem.eql(u8, a, "-e") or std.mem.eql(u8, a, "--ext")) {
             i += 1;
             if (i >= args.items.len) return fail(stderr, "missing value for -e/--ext");
