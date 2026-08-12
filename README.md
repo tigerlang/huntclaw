@@ -20,6 +20,8 @@ The binary lands at `zig-out/bin/huntclaw`. For a Windows build from Linux/macOS
 ```
 python3 -m ziglang build --release=fast -Dtarget=x86_64-windows
 ```
+or:
+Download from `https://ziglang.org/download/`
 
 If you have `zig` on PATH already, drop the `python3 -m ziglang` prefix and
 just run `zig build --release=fast`.
