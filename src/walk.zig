@@ -176,27 +176,30 @@ fn processFile(
     processFileBuffered(gpa, io, path, pattern, replacement, opts, stats, &line_buf, &dummy_mutex, stdout);
 }
 
-fn readFileFast(gpa: std.mem.Allocator, io: Io, path: []const u8) !?[]u8 {
-    var file = Dir.cwd().openFile(io, path, .{ .allow_directory = true }) catch |err| {
+fn readFileFast(gpa: std.mem.Allocator, io: Io, path: []const u8, mode: Dir.OpenFileOptions.Mode) !?struct { file: Io.File, data: []u8 } {
+    var file = Dir.cwd().openFile(io, path, .{ .allow_directory = true, .mode = mode }) catch |err| {
         if (err == error.IsDir) return null;
         return err;
     };
-    defer file.close(io);
+    errdefer file.close(io);
 
     const st = file.stat(io) catch return error.Unexpected;
-    if (st.kind == .directory) return null;
+    if (st.kind == .directory) {
+        file.close(io);
+        return null;
+    }
 
     const size = st.size;
-    if (size == 0) return @as([]u8, &.{});
+    if (size == 0) return .{ .file = file, .data = &.{} };
     if (size > max_file_size) return error.StreamTooLong;
 
     const buf = try gpa.alloc(u8, size);
     errdefer gpa.free(buf);
 
     const got = try file.readPositionalAll(io, buf, 0);
-    if (got == buf.len) return buf;
+    if (got == buf.len) return .{ .file = file, .data = buf };
     const shrunk = try gpa.realloc(buf, got);
-    return shrunk;
+    return .{ .file = file, .data = shrunk };
 }
 
 fn processFileBuffered(
@@ -211,12 +214,18 @@ fn processFileBuffered(
     out_mutex: *Io.Mutex,
     stdout: *Io.Writer,
 ) void {
-    const data = (readFileFast(gpa, io, path) catch |err| {
+    const will_write = !opts.pattern_only and !opts.dry_run;
+    const mode: Dir.OpenFileOptions.Mode = if (will_write) .read_write else .read_only;
+
+    const opened = (readFileFast(gpa, io, path, mode) catch |err| {
         out_mutex.lockUncancelable(io);
         defer out_mutex.unlock(io);
         stdout.print("huntclaw: cannot read {s}: {t}\n", .{ path, err }) catch {};
         return;
     }) orelse return;
+    var file = opened.file;
+    const data = opened.data;
+    defer file.close(io);
     defer gpa.free(data);
     if (data.len == 0) return;
 
@@ -255,5 +264,6 @@ fn processFileBuffered(
 
     if (opts.dry_run) return;
 
-    Dir.cwd().writeFile(io, .{ .sub_path = path, .data = result.output }) catch {};
+    file.writePositionalAll(io, result.output, 0) catch return;
+    file.setLength(io, result.output.len) catch {};
 }
