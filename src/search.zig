@@ -9,9 +9,19 @@ pub const Options = struct {
 };
 
 pub const Stats = struct {
-    matches: usize = 0,
-    files_matched: usize = 0,
-    files_scanned: usize = 0,
+    matches: std.atomic.Value(usize) = .init(0),
+    files_matched: std.atomic.Value(usize) = .init(0),
+    files_scanned: std.atomic.Value(usize) = .init(0),
+
+    pub fn addMatches(self: *Stats, n: usize) void {
+        _ = self.matches.fetchAdd(n, .monotonic);
+    }
+    pub fn incFilesMatched(self: *Stats) void {
+        _ = self.files_matched.fetchAdd(1, .monotonic);
+    }
+    pub fn incFilesScanned(self: *Stats) void {
+        _ = self.files_scanned.fetchAdd(1, .monotonic);
+    }
 };
 
 inline fn lower(c: u8) u8 {

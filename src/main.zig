@@ -91,12 +91,15 @@ pub fn main(init: std.process.Init) !u8 {
     }
 
     if (!opts.quiet) {
+        const m = stats.matches.load(.monotonic);
+        const fm = stats.files_matched.load(.monotonic);
+        const fs = stats.files_scanned.load(.monotonic);
         if (opts.pattern_only) {
-            try stdout.print("{d} matches in {d} files ({d} scanned)\n", .{ stats.matches, stats.files_matched, stats.files_scanned });
+            try stdout.print("{d} matches in {d} files ({d} scanned)\n", .{ m, fm, fs });
         } else if (opts.dry_run) {
-            try stdout.print("{d} matches in {d} files would be replaced ({d} scanned)\n", .{ stats.matches, stats.files_matched, stats.files_scanned });
+            try stdout.print("{d} matches in {d} files would be replaced ({d} scanned)\n", .{ m, fm, fs });
         } else {
-            try stdout.print("{d} matches replaced in {d} files ({d} scanned)\n", .{ stats.matches, stats.files_matched, stats.files_scanned });
+            try stdout.print("{d} matches replaced in {d} files ({d} scanned)\n", .{ m, fm, fs });
         }
     }
 
