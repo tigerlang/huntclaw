@@ -35,10 +35,13 @@ fn eqCase(a: u8, b: u8, ci: bool) bool {
 
 const lane_count = std.simd.suggestVectorLength(u8) orelse 16;
 const Lane = @Vector(lane_count, u8);
+const Mask = std.meta.Int(.unsigned, lane_count);
 
 // two-byte SIMD prefilter (first+last of pattern) narrows candidates before
 // the scalar BMH verification runs, cutting false positives on sparse data.
-fn scanLanes(haystack: []const u8, pos: usize, first: u8, last: u8, offset: usize) ?usize {
+// Walks every set bit within a vector before advancing to the next block,
+// so a run of false positives inside one lane doesn't restart the scan.
+fn scanLanes(haystack: []const u8, pos: usize, first: u8, last: u8, offset: usize, m: *const Matcher) ?usize {
     const first_v: Lane = @splat(first);
     const last_v: Lane = @splat(last);
     var i = pos;
@@ -46,9 +49,12 @@ fn scanLanes(haystack: []const u8, pos: usize, first: u8, last: u8, offset: usiz
         const a: Lane = haystack[i..][0..lane_count].*;
         const b: Lane = haystack[i + offset ..][0..lane_count].*;
         const hit = (a == first_v) & (b == last_v);
-        if (@reduce(.Or, hit)) {
-            const mask: std.meta.Int(.unsigned, lane_count) = @bitCast(hit);
-            return i + @ctz(mask);
+        var mask: Mask = @bitCast(hit);
+        while (mask != 0) {
+            const bit = @ctz(mask);
+            const cand = i + bit;
+            if (m.verify(haystack, cand)) return cand;
+            mask &= mask - 1;
         }
     }
     return null;
@@ -99,16 +105,10 @@ pub const Matcher = struct {
 
         const offset = n - 1;
         const simd_limit = if (haystack.len >= offset + lane_count) haystack.len - offset - lane_count + 1 else from;
-        var pos = from;
-        while (pos < simd_limit) {
-            const cand = scanLanes(haystack, pos, self.first_lower, self.last_lower, offset) orelse {
-                pos = simd_limit;
-                break;
-            };
-            if (self.verify(haystack, cand)) return cand;
-            pos = cand + 1;
+        if (from < simd_limit) {
+            if (scanLanes(haystack, from, self.first_lower, self.last_lower, offset, self)) |cand| return cand;
         }
-        return self.findScalar(haystack, @max(pos, from));
+        return self.findScalar(haystack, @max(simd_limit, from));
     }
 
     fn findScalar(self: *const Matcher, haystack: []const u8, from: usize) ?usize {
