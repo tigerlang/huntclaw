@@ -44,7 +44,7 @@ which do the same job huntclaw is built for, there's no contest.
 
 Full methodology and raw numbers are reproducible: generate the datasets
 described in the table, run each tool with warmup, take the minimum of
-several runs.
+several runs. You can run the benchmark with 'huntclaw_bench.py' file (more new tests, for trust)
 
 ## Usage
 
