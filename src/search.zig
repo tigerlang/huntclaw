@@ -32,14 +32,43 @@ fn eqCase(a: u8, b: u8, ci: bool) bool {
     return if (ci) lower(a) == lower(b) else a == b;
 }
 
-// Boyer-Moore-Horspool with a 256-entry skip table, unrolled last-byte check.
+const lane_count = std.simd.suggestVectorLength(u8) orelse 16;
+const Lane = @Vector(lane_count, u8);
+
+// two-byte SIMD prefilter (first+last of pattern) narrows candidates before
+// the scalar BMH verification runs, cutting false positives on sparse data.
+fn scanLanes(haystack: []const u8, pos: usize, first: u8, last: u8, offset: usize) ?usize {
+    const first_v: Lane = @splat(first);
+    const last_v: Lane = @splat(last);
+    var i = pos;
+    while (i + offset + lane_count <= haystack.len) : (i += lane_count) {
+        const a: Lane = haystack[i..][0..lane_count].*;
+        const b: Lane = haystack[i + offset ..][0..lane_count].*;
+        const hit = (a == first_v) & (b == last_v);
+        if (@reduce(.Or, hit)) {
+            const mask: std.meta.Int(.unsigned, lane_count) = @bitCast(hit);
+            return i + @ctz(mask);
+        }
+    }
+    return null;
+}
+
+// Boyer-Moore-Horspool with a 256-entry skip table, SIMD-prefiltered scan.
 pub const Matcher = struct {
     pattern: []const u8,
     skip: [256]usize,
     ignore_case: bool,
+    first_lower: u8,
+    last_lower: u8,
 
     pub fn init(pattern: []const u8, ignore_case: bool) Matcher {
-        var m = Matcher{ .pattern = pattern, .skip = undefined, .ignore_case = ignore_case };
+        var m = Matcher{
+            .pattern = pattern,
+            .skip = undefined,
+            .ignore_case = ignore_case,
+            .first_lower = if (pattern.len > 0) (if (ignore_case) lower(pattern[0]) else pattern[0]) else 0,
+            .last_lower = if (pattern.len > 0) (if (ignore_case) lower(pattern[pattern.len - 1]) else pattern[pattern.len - 1]) else 0,
+        };
         const n = pattern.len;
         for (&m.skip) |*s| s.* = n;
         if (n > 0) {
@@ -52,13 +81,40 @@ pub const Matcher = struct {
         return m;
     }
 
-    // returns index of next match at or after `from`, or null
+    fn verify(self: *const Matcher, haystack: []const u8, pos: usize) bool {
+        var j: usize = 1;
+        while (j + 1 < self.pattern.len) : (j += 1) {
+            if (!eqCase(haystack[pos + j], self.pattern[j], self.ignore_case)) return false;
+        }
+        return true;
+    }
+
+    // case-sensitive single-byte pattern and case-insensitive paths fall back
+    // to scalar BMH; the case-sensitive multi-byte path gets the SIMD prefilter.
     pub fn find(self: *const Matcher, haystack: []const u8, from: usize) ?usize {
         const n = self.pattern.len;
         if (n == 0 or n > haystack.len) return null;
+        if (self.ignore_case or n < 2) return self.findScalar(haystack, from);
+
+        const offset = n - 1;
+        const simd_limit = if (haystack.len >= offset + lane_count) haystack.len - offset - lane_count + 1 else from;
+        var pos = from;
+        while (pos < simd_limit) {
+            const cand = scanLanes(haystack, pos, self.first_lower, self.last_lower, offset) orelse {
+                pos = simd_limit;
+                break;
+            };
+            if (self.verify(haystack, cand)) return cand;
+            pos = cand + 1;
+        }
+        return self.findScalar(haystack, @max(pos, from));
+    }
+
+    fn findScalar(self: *const Matcher, haystack: []const u8, from: usize) ?usize {
+        const n = self.pattern.len;
         var pos = from;
         const last = n - 1;
-        const last_c = if (self.ignore_case) lower(self.pattern[last]) else self.pattern[last];
+        const last_c = self.last_lower;
         while (pos + n <= haystack.len) {
             const hc = if (self.ignore_case) lower(haystack[pos + last]) else haystack[pos + last];
             if (hc == last_c) {
