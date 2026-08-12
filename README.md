@@ -36,11 +36,12 @@ same problem.
 ![huntclaw benchmark: search and replace timings against ripgrep, GNU grep, sd, and GNU sed](assets/benchmark.png)
 
 huntclaw wins six of seven scenarios. The one loss is intentional territory:
-ripgrep's single-byte SIMD memchr has less work to do when a pattern is rare,
-and at 60 matches in 20MB that advantage shows. Once matches get dense or the
-file gets large, huntclaw's two-byte prefilter and lack of regex-engine
-overhead pull ahead — sometimes by an order of magnitude. Against sed and sd,
-which do the same job huntclaw is built for, there's no contest.
+GNU grep and ripgrep both use a single-byte memchr scan that has less work
+to do when a pattern is rare, and at 50 matches in 23MB that advantage
+shows. Once matches get dense or the file gets large, huntclaw's two-byte
+prefilter and lack of regex-engine overhead pull ahead — sometimes by an
+order of magnitude. Against sed and sd, which do the same job huntclaw is
+built for, there's no contest.
 
 Full methodology and raw numbers are reproducible: generate the datasets
 described in the table, run each tool with warmup, take the minimum of
@@ -89,7 +90,9 @@ matching, not regex — that's part of why it's fast.
 - A two-byte SIMD prefilter (first + last byte of the pattern, compared
   across a full vector width at once) narrows candidates before the scalar
   verification step runs — this is the same class of trick memchr-based
-  tools use, sized to the pattern instead of a single byte.
+  tools use, sized to the pattern instead of a single byte. Every candidate
+  found inside one vector is checked before moving to the next, so a run of
+  false positives doesn't force a rescan.
 - Single-pass replace: output is built directly with a growable buffer
   instead of scanning once to count matches and again to build the result.
 - Files are read with one stat and one sized allocation instead of a
