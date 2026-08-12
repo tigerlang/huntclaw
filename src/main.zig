@@ -100,17 +100,15 @@ pub fn main(init: std.process.Init) !u8 {
         try walk.process(gpa, io, p, pattern.?, replacement orelse "", &opts, &stats, stdout, stderr);
     }
 
-    if (!opts.quiet) {
-        const m = stats.matches.load(.monotonic);
-        const fm = stats.files_matched.load(.monotonic);
-        const fs = stats.files_scanned.load(.monotonic);
-        if (opts.pattern_only) {
-            try stdout.print("{d} matches in {d} files ({d} scanned)\n", .{ m, fm, fs });
-        } else if (opts.dry_run) {
-            try stdout.print("{d} matches in {d} files would be replaced ({d} scanned)\n", .{ m, fm, fs });
-        } else {
-            try stdout.print("{d} matches replaced in {d} files ({d} scanned)\n", .{ m, fm, fs });
-        }
+    const m = stats.matches.load(.monotonic);
+    const fm = stats.files_matched.load(.monotonic);
+    const fs = stats.files_scanned.load(.monotonic);
+    if (opts.pattern_only) {
+        try stdout.print("{d} matches in {d} files ({d} scanned)\n", .{ m, fm, fs });
+    } else if (opts.dry_run) {
+        try stdout.print("{d} matches in {d} files would be replaced ({d} scanned)\n", .{ m, fm, fs });
+    } else {
+        try stdout.print("{d} matches replaced in {d} files ({d} scanned)\n", .{ m, fm, fs });
     }
 
     return 0;
