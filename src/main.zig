@@ -32,7 +32,8 @@ pub fn main(init: std.process.Init) !u8 {
     defer stdout.flush() catch {};
     defer stderr.flush() catch {};
 
-    var arg_it = init.minimal.args.iterate();
+    var arg_it = try init.minimal.args.iterateAllocator(gpa);
+    defer arg_it.deinit();
     var args = std.ArrayList([:0]const u8).empty;
     defer args.deinit(gpa);
     while (arg_it.next()) |a| try args.append(gpa, a);
