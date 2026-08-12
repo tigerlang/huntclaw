@@ -33,15 +33,7 @@ warmed up, best-of-N timing, same machine, same datasets. Search numbers
 count total occurrences (not matching lines) so every tool is solving the
 same problem.
 
-| Scenario | huntclaw | ripgrep | GNU grep | sd | GNU sed |
-|---|---|---|---|---|---|
-| Search, 33MB file, 281k matches | **30ms** | 98ms | 165ms | — | — |
-| Search, 3000 files, 12MB | **20ms** | 30ms | 58ms | — | — |
-| Search, 20MB file, 60 matches (sparse) | 14ms | **9ms** | 28ms | — | — |
-| Search, 10MB file, 1M matches (dense) | **15ms** | 145ms | 169ms | — | — |
-| Replace, 33MB file, 281k matches | **53ms** | — | — | 122ms | 211ms |
-| Replace, 3000 files | **167ms** | — | — | 1014ms | 946ms |
-| Replace, 10MB file, 1M matches | **26ms** | — | — | 208ms | 164ms |
+![huntclaw benchmark: search and replace timings against ripgrep, GNU grep, sd, and GNU sed](assets/benchmark.png)
 
 huntclaw wins six of seven scenarios. The one loss is intentional territory:
 ripgrep's single-byte SIMD memchr has less work to do when a pattern is rare,
