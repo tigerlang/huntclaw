@@ -73,12 +73,14 @@ Options:
 | `-n, --dry-run` | report what would change, write nothing |
 | `-e, --ext <ext>` | restrict to files with this extension (repeatable) |
 | `-q, --quiet` | suppress per-file lines, keep the summary |
+| `-n-s-l, --no-skip-list` | do not skip `.git`, `node_modules`, and other default dirs |
+| `-v, --version` | print version and exit |
 | `-h, --help` | show usage |
 
 huntclaw skips binary files automatically and ignores `.git`, `node_modules`,
-`.zig-cache`, `zig-out`, `target`, `.svn`, `.hg` when walking directories.
-Matching is literal substring matching, not regex — that's part of why it's
-fast.
+`.zig-cache`, `zig-out`, `target`, `.svn`, `.hg` when walking directories
+unless `-n-s-l`/`--no-skip-list` is set. Matching is literal substring
+matching, not regex — that's part of why it's fast.
 
 ## How it's fast
 
@@ -90,6 +92,10 @@ fast.
   tools use, sized to the pattern instead of a single byte.
 - Single-pass replace: output is built directly with a growable buffer
   instead of scanning once to count matches and again to build the result.
+- Files are read with one stat and one sized allocation instead of a
+  growable buffer that reallocates as it fills.
+- Read and write share the same open file handle when a file is modified,
+  instead of closing and reopening the path to write the result back.
 - Directory walks over many files are split across worker threads once the
   file count crosses a small threshold, so multi-core machines scale
   close to linearly on large trees.

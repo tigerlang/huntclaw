@@ -2,6 +2,8 @@ const std = @import("std");
 const search = @import("search.zig");
 const walk = @import("walk.zig");
 
+const version = "0.2";
+
 const usage =
     \\huntclaw - fast find-and-replace
     \\
@@ -16,6 +18,7 @@ const usage =
     \\  -e, --ext <ext>       only process files with this extension (repeatable)
     \\  -q, --quiet           suppress per-file output
     \\  -n-s-l, --no-skip-list  do not skip .git, node_modules, and other default dirs
+    \\  -v, --version         print version and exit
     \\  -h, --help            show this help
     \\
 ;
@@ -52,6 +55,9 @@ pub fn main(init: std.process.Init) !u8 {
         const a = args.items[i];
         if (std.mem.eql(u8, a, "-h") or std.mem.eql(u8, a, "--help")) {
             try stdout.writeAll(usage);
+            return 0;
+        } else if (std.mem.eql(u8, a, "-v") or std.mem.eql(u8, a, "--version")) {
+            try stdout.print("huntclaw {s}\n", .{version});
             return 0;
         } else if (std.mem.eql(u8, a, "-p") or std.mem.eql(u8, a, "--pattern-only")) {
             opts.pattern_only = true;
