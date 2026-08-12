@@ -2,7 +2,7 @@ const std = @import("std");
 const search = @import("search.zig");
 const walk = @import("walk.zig");
 
-const version = "0.2";
+const version = "0.3";
 
 const usage =
     \\huntclaw - fast find-and-replace
