@@ -176,6 +176,29 @@ fn processFile(
     processFileBuffered(gpa, io, path, pattern, replacement, opts, stats, &line_buf, &dummy_mutex, stdout);
 }
 
+fn readFileFast(gpa: std.mem.Allocator, io: Io, path: []const u8) !?[]u8 {
+    var file = Dir.cwd().openFile(io, path, .{ .allow_directory = true }) catch |err| {
+        if (err == error.IsDir) return null;
+        return err;
+    };
+    defer file.close(io);
+
+    const st = file.stat(io) catch return error.Unexpected;
+    if (st.kind == .directory) return null;
+
+    const size = st.size;
+    if (size == 0) return @as([]u8, &.{});
+    if (size > max_file_size) return error.StreamTooLong;
+
+    const buf = try gpa.alloc(u8, size);
+    errdefer gpa.free(buf);
+
+    const got = try file.readPositionalAll(io, buf, 0);
+    if (got == buf.len) return buf;
+    const shrunk = try gpa.realloc(buf, got);
+    return shrunk;
+}
+
 fn processFileBuffered(
     gpa: std.mem.Allocator,
     io: Io,
@@ -188,13 +211,12 @@ fn processFileBuffered(
     out_mutex: *Io.Mutex,
     stdout: *Io.Writer,
 ) void {
-    const data = Dir.cwd().readFileAlloc(io, path, gpa, .limited(max_file_size)) catch |err| {
-        if (err == error.IsDir) return;
+    const data = (readFileFast(gpa, io, path) catch |err| {
         out_mutex.lockUncancelable(io);
         defer out_mutex.unlock(io);
         stdout.print("huntclaw: cannot read {s}: {t}\n", .{ path, err }) catch {};
         return;
-    };
+    }) orelse return;
     defer gpa.free(data);
     if (data.len == 0) return;
 
