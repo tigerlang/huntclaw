@@ -20,6 +20,7 @@ const usage =
     \\  -n-s-l, --no-skip-list  do not skip .git, node_modules, and other default dirs
     \\  -l, --line            show line number and matching line text (search mode)
     \\  --max-depth <N>       limit directory recursion depth (0 = given dirs only)
+    \\  --stats-only          print only a JSON summary, no per-file output
     \\  -v, --version         print version and exit
     \\  -h, --help            show this help
     \\
@@ -79,6 +80,9 @@ pub fn main(init: std.process.Init) !u8 {
             opts.max_depth = std.fmt.parseInt(usize, args.items[i], 10) catch {
                 return fail(stderr, "--max-depth expects a non-negative integer");
             };
+        } else if (std.mem.eql(u8, a, "--stats-only")) {
+            opts.stats_json = true;
+            opts.quiet = true;
         } else if (std.mem.eql(u8, a, "-e") or std.mem.eql(u8, a, "--ext")) {
             i += 1;
             if (i >= args.items.len) return fail(stderr, "missing value for -e/--ext");
@@ -113,7 +117,14 @@ pub fn main(init: std.process.Init) !u8 {
     const m = stats.matches.load(.monotonic);
     const fm = stats.files_matched.load(.monotonic);
     const fs = stats.files_scanned.load(.monotonic);
-    if (opts.pattern_only) {
+    const mode: []const u8 = if (opts.pattern_only) "search" else if (opts.dry_run) "dry_run" else "replace";
+
+    if (opts.stats_json) {
+        try stdout.print(
+            "{{\"mode\":\"{s}\",\"matches\":{d},\"files_matched\":{d},\"files_scanned\":{d}}}\n",
+            .{ mode, m, fm, fs },
+        );
+    } else if (opts.pattern_only) {
         try stdout.print("{d} matches in {d} files ({d} scanned)\n", .{ m, fm, fs });
     } else if (opts.dry_run) {
         try stdout.print("{d} matches in {d} files would be replaced ({d} scanned)\n", .{ m, fm, fs });

@@ -7,6 +7,7 @@ pub const Options = struct {
     quiet: bool = false,
     no_skip_list: bool = false,
     show_lines: bool = false,
+    stats_json: bool = false,
     max_depth: ?usize = null,
     exts: []const []const u8 = &.{},
 };
