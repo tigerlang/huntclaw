@@ -63,7 +63,7 @@ pub fn process(
         for (files.items) |f| gpa.free(f);
         files.deinit(gpa);
     }
-    try collect(gpa, io, path, opts, &files, stderr);
+    try collect(gpa, io, path, opts, &files, stderr, 0);
 
     if (files.items.len < parallel_threshold) {
         for (files.items) |f| try processFile(gpa, io, f, pattern, replacement, opts, stats, stdout);
@@ -80,6 +80,7 @@ fn collect(
     opts: *const search.Options,
     files: *std.ArrayList([]const u8),
     stderr: *Io.Writer,
+    depth: usize,
 ) !void {
     var dir = Dir.cwd().openDir(io, dir_path, .{ .iterate = true }) catch |err| {
         try stderr.print("huntclaw: cannot open {s}: {t}\n", .{ dir_path, err });
@@ -91,9 +92,12 @@ fn collect(
     while (try it.next(io)) |entry| {
         if (entry.kind == .directory) {
             if (shouldSkipDir(entry.name, opts.no_skip_list)) continue;
+            if (opts.max_depth) |max_d| {
+                if (depth >= max_d) continue;
+            }
             const sub = try std.fs.path.join(gpa, &.{ dir_path, entry.name });
             defer gpa.free(sub);
-            try collect(gpa, io, sub, opts, files, stderr);
+            try collect(gpa, io, sub, opts, files, stderr, depth + 1);
         } else if (entry.kind == .file) {
             if (!extMatches(entry.name, opts.exts)) continue;
             const full = try std.fs.path.join(gpa, &.{ dir_path, entry.name });

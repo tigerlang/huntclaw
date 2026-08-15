@@ -19,6 +19,7 @@ const usage =
     \\  -q, --quiet           suppress per-file output
     \\  -n-s-l, --no-skip-list  do not skip .git, node_modules, and other default dirs
     \\  -l, --line            show line number and matching line text (search mode)
+    \\  --max-depth <N>       limit directory recursion depth (0 = given dirs only)
     \\  -v, --version         print version and exit
     \\  -h, --help            show this help
     \\
@@ -72,6 +73,12 @@ pub fn main(init: std.process.Init) !u8 {
             opts.no_skip_list = true;
         } else if (std.mem.eql(u8, a, "-l") or std.mem.eql(u8, a, "--line")) {
             opts.show_lines = true;
+        } else if (std.mem.eql(u8, a, "--max-depth")) {
+            i += 1;
+            if (i >= args.items.len) return fail(stderr, "missing value for --max-depth");
+            opts.max_depth = std.fmt.parseInt(usize, args.items[i], 10) catch {
+                return fail(stderr, "--max-depth expects a non-negative integer");
+            };
         } else if (std.mem.eql(u8, a, "-e") or std.mem.eql(u8, a, "--ext")) {
             i += 1;
             if (i >= args.items.len) return fail(stderr, "missing value for -e/--ext");
