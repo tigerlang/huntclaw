@@ -63,6 +63,9 @@ huntclaw -i hello Hello .                 # case-insensitive replace
 huntclaw -n oldname newname .             # dry run, no writes
 huntclaw -e rs -e toml old new .          # only .rs and .toml files
 huntclaw -q foo bar .                     # suppress per-file output
+huntclaw -p -l "unwrap()" src/            # show line number and match text
+huntclaw -p --max-depth 1 TODO .          # only scan the top-level directory
+huntclaw -p --stats-only TODO . | jq      # JSON summary for scripting
 ```
 
 Options:
@@ -75,6 +78,9 @@ Options:
 | `-e, --ext <ext>` | restrict to files with this extension (repeatable) |
 | `-q, --quiet` | suppress per-file lines, keep the summary |
 | `-n-s-l, --no-skip-list` | do not skip `.git`, `node_modules`, and other default dirs |
+| `-l, --line` | show line number and matching line text (search mode) |
+| `--max-depth <N>` | limit directory recursion depth (0 = given dirs only) |
+| `--stats-only` | print only a JSON summary, no per-file output |
 | `-v, --version` | print version and exit |
 | `-h, --help` | show usage |
 
