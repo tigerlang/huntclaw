@@ -6,6 +6,7 @@ pub const Options = struct {
     dry_run: bool = false,
     quiet: bool = false,
     no_skip_list: bool = false,
+    show_lines: bool = false,
     exts: []const []const u8 = &.{},
 };
 

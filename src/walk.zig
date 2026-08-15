@@ -202,6 +202,35 @@ fn readFileFast(gpa: std.mem.Allocator, io: Io, path: []const u8, mode: Dir.Open
     return .{ .file = file, .data = shrunk };
 }
 
+fn printMatchLines(path: []const u8, data: []const u8, matcher: *const search.Matcher, out_mutex: *Io.Mutex, io: Io, stdout: *Io.Writer, quiet: bool) usize {
+    var count: usize = 0;
+    var pos: usize = 0;
+    var line_no: usize = 1;
+    var line_start: usize = 0;
+    var scanned_to: usize = 0;
+
+    out_mutex.lockUncancelable(io);
+    defer out_mutex.unlock(io);
+
+    while (matcher.find(data, pos)) |idx| {
+        count += 1;
+        if (!quiet) {
+            while (scanned_to < idx) {
+                if (data[scanned_to] == '\n') {
+                    line_no += 1;
+                    line_start = scanned_to + 1;
+                }
+                scanned_to += 1;
+            }
+            const line_end = std.mem.indexOfScalarPos(u8, data, line_start, '\n') orelse data.len;
+            const line = std.mem.trimEnd(u8, data[line_start..line_end], "\r");
+            stdout.print("{s}:{d}: {s}\n", .{ path, line_no, line }) catch return count;
+        }
+        pos = idx + matcher.pattern.len;
+    }
+    return count;
+}
+
 fn processFileBuffered(
     gpa: std.mem.Allocator,
     io: Io,
@@ -235,6 +264,14 @@ fn processFileBuffered(
     var matcher = search.Matcher.init(pattern, opts.ignore_case);
 
     if (opts.pattern_only) {
+        if (opts.show_lines) {
+            const n = printMatchLines(path, data, &matcher, out_mutex, io, stdout, opts.quiet);
+            if (n > 0) {
+                stats.addMatches(n);
+                stats.incFilesMatched();
+            }
+            return;
+        }
         const n = matcher.count(data);
         if (n > 0) {
             stats.addMatches(n);

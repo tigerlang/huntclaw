@@ -18,6 +18,7 @@ const usage =
     \\  -e, --ext <ext>       only process files with this extension (repeatable)
     \\  -q, --quiet           suppress per-file output
     \\  -n-s-l, --no-skip-list  do not skip .git, node_modules, and other default dirs
+    \\  -l, --line            show line number and matching line text (search mode)
     \\  -v, --version         print version and exit
     \\  -h, --help            show this help
     \\
@@ -69,6 +70,8 @@ pub fn main(init: std.process.Init) !u8 {
             opts.quiet = true;
         } else if (std.mem.eql(u8, a, "-n-s-l") or std.mem.eql(u8, a, "--no-skip-list")) {
             opts.no_skip_list = true;
+        } else if (std.mem.eql(u8, a, "-l") or std.mem.eql(u8, a, "--line")) {
+            opts.show_lines = true;
         } else if (std.mem.eql(u8, a, "-e") or std.mem.eql(u8, a, "--ext")) {
             i += 1;
             if (i >= args.items.len) return fail(stderr, "missing value for -e/--ext");
