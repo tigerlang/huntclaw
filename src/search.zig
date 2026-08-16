@@ -160,8 +160,20 @@ pub fn replaceAll(allocator: std.mem.Allocator, haystack: []const u8, matcher: *
 
     const first = matcher.find(haystack, 0) orelse return .{ .output = try allocator.dupe(u8, haystack), .matches = 0 };
 
-    // single pass: grow into a spare-capacity buffer, geometric doubling on overflow
-    var out = try allocator.alloc(u8, haystack.len + (haystack.len >> 2) + replacement.len + 64);
+    // single pass: grow into a spare-capacity buffer, geometric doubling on overflow.
+    // when the replacement is no longer than the pattern, the output can only
+    // shrink or stay the same size no matter how many matches there are, so
+    // sizing the buffer for one match is always enough — no realloc, ever.
+    // when the replacement is longer, the output can grow without bound as
+    // matches pile up, and a realloc big enough to hold the whole file is far
+    // more expensive than the padding it was meant to avoid, so that case
+    // keeps the original generous headroom instead of gambling on a guess.
+    const one_match_size = haystack.len - pat_len + replacement.len;
+    const initial_size = if (replacement.len <= pat_len)
+        one_match_size + 64
+    else
+        haystack.len + (haystack.len >> 2) + replacement.len + 64;
+    var out = try allocator.alloc(u8, initial_size);
     errdefer allocator.free(out);
 
     var src: usize = 0;
