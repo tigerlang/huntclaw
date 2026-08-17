@@ -23,6 +23,7 @@ const usage =
     \\  --stats-only          print only a JSON summary, no per-file output
     \\  -v, --version         print version and exit
     \\  -h, --help            show this help
+    \\  --                    treat everything after this as pattern/replacement/paths
     \\
 ;
 
@@ -54,9 +55,22 @@ pub fn main(init: std.process.Init) !u8 {
     defer exts.deinit(gpa);
 
     var i: usize = 1;
+    var positional_only = false;
     while (i < args.items.len) : (i += 1) {
         const a = args.items[i];
-        if (std.mem.eql(u8, a, "-h") or std.mem.eql(u8, a, "--help")) {
+        if (positional_only) {
+            if (pattern == null) {
+                pattern = a;
+            } else if (replacement == null and !opts.pattern_only) {
+                replacement = a;
+            } else {
+                try paths.append(gpa, a);
+            }
+            continue;
+        }
+        if (std.mem.eql(u8, a, "--")) {
+            positional_only = true;
+        } else if (std.mem.eql(u8, a, "-h") or std.mem.eql(u8, a, "--help")) {
             try stdout.writeAll(usage);
             return 0;
         } else if (std.mem.eql(u8, a, "-v") or std.mem.eql(u8, a, "--version")) {
