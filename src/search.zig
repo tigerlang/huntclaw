@@ -10,6 +10,8 @@ pub const Options = struct {
     stats_json: bool = false,
     max_depth: ?usize = null,
     exts: []const []const u8 = &.{},
+    extra_skip_dirs: []const []const u8 = &.{},
+    excludes: []const []const u8 = &.{},
 };
 
 pub const Stats = struct {

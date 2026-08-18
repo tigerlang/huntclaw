@@ -1,19 +1,24 @@
 const std = @import("std");
 const search = @import("search.zig");
+const rcfile = @import("rcfile.zig");
 const Io = std.Io;
 const Dir = std.Io.Dir;
 
 const skip_dirs = [_][]const u8{ ".git", "node_modules", ".zig-cache", "zig-out", "target", ".svn", ".hg" };
 
-fn shouldSkipDir(name: []const u8, no_skip_list: bool) bool {
-    if (no_skip_list) return false;
+fn shouldSkipDir(name: []const u8, opts: *const search.Options) bool {
+    if (opts.no_skip_list) return false;
     for (skip_dirs) |d| {
+        if (std.mem.eql(u8, name, d)) return true;
+    }
+    for (opts.extra_skip_dirs) |d| {
         if (std.mem.eql(u8, name, d)) return true;
     }
     return false;
 }
 
 fn extMatches(path: []const u8, exts: []const []const u8) bool {
+    if (std.mem.eql(u8, path, ".huntclaw-rc")) return false;
     if (exts.len == 0) return true;
     const dot = std.mem.lastIndexOfScalar(u8, path, '.') orelse return false;
     const ext = path[dot + 1 ..];
@@ -91,7 +96,8 @@ fn collect(
     var it = dir.iterate();
     while (try it.next(io)) |entry| {
         if (entry.kind == .directory) {
-            if (shouldSkipDir(entry.name, opts.no_skip_list)) continue;
+            if (shouldSkipDir(entry.name, opts)) continue;
+            if (rcfile.anyMatch(opts.excludes, entry.name)) continue;
             if (opts.max_depth) |max_d| {
                 if (depth >= max_d) continue;
             }
@@ -100,7 +106,12 @@ fn collect(
             try collect(gpa, io, sub, opts, files, stderr, depth + 1);
         } else if (entry.kind == .file) {
             if (!extMatches(entry.name, opts.exts)) continue;
+            if (rcfile.anyMatch(opts.excludes, entry.name)) continue;
             const full = try std.fs.path.join(gpa, &.{ dir_path, entry.name });
+            if (rcfile.anyMatch(opts.excludes, full)) {
+                gpa.free(full);
+                continue;
+            }
             try files.append(gpa, full);
         }
     }

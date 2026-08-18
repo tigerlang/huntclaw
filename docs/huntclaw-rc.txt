@@ -1,0 +1,59 @@
+huntclaw reads a file named .huntclaw-rc from the current directory, if
+present. It sets project-wide defaults so you don't have to repeat the
+same flags and exclusions on every run.
+
+FORMAT
+
+Lines starting with # are comments. Blank lines are ignored. Everything
+before a line that says exactly [excludes] is parsed as skip/flag entries.
+Everything after that line is treated as an exclude pattern, one per line.
+
+  skip: <dir name>
+    Adds a directory name to the built-in skip list (.git, node_modules,
+    .zig-cache, zig-out, target, .svn, .hg). Matches by exact name at any
+    depth, same as the built-in ones. Repeatable.
+
+  flag: <flag>
+    Injects a CLI flag as if it were passed on the command line, before
+    your actual arguments. Anything huntclaw accepts works here, including
+    flags with values (flag: --max-depth 3). Repeatable.
+
+  [excludes]
+    Everything below this line is a gitignore-style pattern. One pattern
+    per line, no prefix.
+
+EXCLUDE PATTERN SYNTAX
+
+  *.min.js       matches any file ending in .min.js, at any depth
+  vendor/        matches a directory named vendor, at any depth
+  /build/        anchored: only matches build/ at the project root
+  logs/**/*.tmp  ** matches across directory boundaries
+  data?.csv      ? matches a single character
+
+Patterns without a leading / are checked against every path segment, so
+"vendor/" excludes vendor at any depth, not just the root. A trailing /
+means the pattern only matches directories, not files with that name.
+
+EXAMPLE
+
+  skip: fixtures
+  skip: dist
+  flag: -i
+  flag: --max-depth 6
+
+  [excludes]
+  *.min.js
+  *.snap
+  vendor/
+  /coverage/
+  **/*.generated.go
+
+PRECEDENCE
+
+CLI flags always take effect after .huntclaw-rc flags, so a flag passed
+on the command line overrides one from the file where they conflict.
+-ex/--exclude on the command line adds to, not replaces, the [excludes]
+patterns from the file.
+
+huntclaw never edits .huntclaw-rc itself, and never scans or replaces
+inside it.

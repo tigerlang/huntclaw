@@ -1,6 +1,7 @@
 const std = @import("std");
 const search = @import("search.zig");
 const walk = @import("walk.zig");
+const rcfile = @import("rcfile.zig");
 
 const version = "0.4";
 
@@ -21,9 +22,13 @@ const usage =
     \\  -l, --line            show line number and matching line text (search mode)
     \\  --max-depth <N>       limit directory recursion depth (0 = given dirs only)
     \\  --stats-only          print only a JSON summary, no per-file output
+    \\  -ex, --exclude <glob> exclude files/dirs matching this glob (repeatable)
     \\  -v, --version         print version and exit
     \\  -h, --help            show this help
     \\  --                    treat everything after this as pattern/replacement/paths
+    \\
+    \\Reads .huntclaw-rc from the current directory if present.
+    \\See docs/huntclaw-rc.txt for its format.
     \\
 ;
 
@@ -42,9 +47,18 @@ pub fn main(init: std.process.Init) !u8 {
 
     var arg_it = try init.minimal.args.iterateAllocator(gpa);
     defer arg_it.deinit();
-    var args = std.ArrayList([:0]const u8).empty;
+    var raw_args = std.ArrayList([:0]const u8).empty;
+    defer raw_args.deinit(gpa);
+    while (arg_it.next()) |a| try raw_args.append(gpa, a);
+
+    var rc = rcfile.load(gpa, io, std.Io.Dir.cwd()) catch null;
+    defer if (rc) |*r| r.deinit(gpa);
+
+    var args = std.ArrayList([]const u8).empty;
     defer args.deinit(gpa);
-    while (arg_it.next()) |a| try args.append(gpa, a);
+    try args.append(gpa, raw_args.items[0]);
+    if (rc) |r| for (r.flags.items) |f| try args.append(gpa, f);
+    for (raw_args.items[1..]) |a| try args.append(gpa, a);
 
     var opts = search.Options{};
     var pattern: ?[]const u8 = null;
@@ -53,6 +67,12 @@ pub fn main(init: std.process.Init) !u8 {
     defer paths.deinit(gpa);
     var exts = std.ArrayList([]const u8).empty;
     defer exts.deinit(gpa);
+    var excludes = std.ArrayList([]const u8).empty;
+    defer excludes.deinit(gpa);
+    if (rc) |r| {
+        opts.extra_skip_dirs = r.skip_dirs.items;
+        try excludes.appendSlice(gpa, r.excludes.items);
+    }
 
     var i: usize = 1;
     var positional_only = false;
@@ -97,6 +117,10 @@ pub fn main(init: std.process.Init) !u8 {
         } else if (std.mem.eql(u8, a, "--stats-only")) {
             opts.stats_json = true;
             opts.quiet = true;
+        } else if (std.mem.eql(u8, a, "-ex") or std.mem.eql(u8, a, "--exclude")) {
+            i += 1;
+            if (i >= args.items.len) return fail(stderr, "missing value for -ex/--exclude");
+            try excludes.append(gpa, args.items[i]);
         } else if (std.mem.eql(u8, a, "-e") or std.mem.eql(u8, a, "--ext")) {
             i += 1;
             if (i >= args.items.len) return fail(stderr, "missing value for -e/--ext");
@@ -122,6 +146,7 @@ pub fn main(init: std.process.Init) !u8 {
 
     if (paths.items.len == 0) try paths.append(gpa, ".");
     opts.exts = exts.items;
+    opts.excludes = excludes.items;
 
     var stats = search.Stats{};
     for (paths.items) |p| {
