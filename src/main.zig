@@ -11,6 +11,7 @@ const usage =
     \\Usage:
     \\  huntclaw <pattern> <replacement> [path...] [options]
     \\  huntclaw -p <pattern> [path...]            (search only, no replace)
+    \\  huntclaw init                              (create a .huntclaw-rc template)
     \\
     \\Options:
     \\  -p, --pattern-only    only find matches, do not replace
@@ -32,6 +33,31 @@ const usage =
     \\
 ;
 
+fn initRc(io: std.Io, stdout: *std.Io.Writer, stderr: *std.Io.Writer) !u8 {
+    const template =
+        \\# skip: adds a directory name to the default skip list
+        \\# skip: fixtures
+        \\
+        \\# flag: injects a CLI flag on every run, same syntax as the command line
+        \\# flag: -i
+        \\
+        \\[excludes]
+        \\# gitignore-style patterns below this line, one per line
+        \\# *.min.js
+        \\# vendor/
+        \\
+    ;
+    std.Io.Dir.cwd().writeFile(io, .{ .sub_path = ".huntclaw-rc", .data = template, .flags = .{ .exclusive = true } }) catch |err| {
+        if (err == error.PathAlreadyExists) {
+            try stderr.print("huntclaw: .huntclaw-rc already exists\n", .{});
+            return 1;
+        }
+        return err;
+    };
+    try stdout.print("created .huntclaw-rc\n", .{});
+    return 0;
+}
+
 pub fn main(init: std.process.Init) !u8 {
     const gpa = init.gpa;
     const io = init.io;
@@ -50,6 +76,10 @@ pub fn main(init: std.process.Init) !u8 {
     var raw_args = std.ArrayList([:0]const u8).empty;
     defer raw_args.deinit(gpa);
     while (arg_it.next()) |a| try raw_args.append(gpa, a);
+
+    if (raw_args.items.len > 1 and std.mem.eql(u8, raw_args.items[1], "init")) {
+        return initRc(io, stdout, stderr);
+    }
 
     var rc = rcfile.load(gpa, io, std.Io.Dir.cwd()) catch null;
     defer if (rc) |*r| r.deinit(gpa);
