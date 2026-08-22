@@ -3,7 +3,7 @@ const search = @import("search.zig");
 const walk = @import("walk.zig");
 const rcfile = @import("rcfile.zig");
 
-const version = "0.5";
+const version = "0.6";
 
 const usage =
     \\huntclaw - fast find-and-replace

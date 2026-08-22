@@ -47,21 +47,6 @@ Full methodology and raw numbers are reproducible: generate the datasets
 described in the table, run each tool with warmup, take the minimum of
 several runs. You can run the benchmark with 'huntclaw_bench.py' file (more new tests, for trust)
 
-## New benchmarks
-
-Version-to-version comparisons, run against the same official
-`huntclaw_bench.py` datasets. This section holds the latest release
-comparison; older ones are replaced as new versions ship.
-
-![huntclaw v0.3 vs v0.4: search and replace timings before and after the exact-size replace buffer](assets/v0.3-vs-v0.4.png)
-
-v0.4 adds three flags — `-l`/`--line` for grep-style match output,
-`--max-depth` to cap directory recursion, and `--stats-only` for a
-JSON summary — plus one performance change: the replace buffer is now
-sized exactly instead of padded by 25% whenever a replacement can't grow
-past a single match's worth of bytes. Same-length replacements are where
-it shows most, since they never needed the padding in the first place.
-
 ## Usage
 
 ```
