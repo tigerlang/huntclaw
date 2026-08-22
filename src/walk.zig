@@ -308,7 +308,8 @@ fn processFileBuffered(
     stats.addMatches(result.matches);
     stats.incFilesMatched();
     if (!opts.quiet) {
-        const msg = std.fmt.bufPrint(line_buf, "{s}: {d} replaced\n", .{ path, result.matches }) catch null;
+        const verb = if (opts.dry_run) "would replace" else "replaced";
+        const msg = std.fmt.bufPrint(line_buf, "{s}: {d} {s}\n", .{ path, result.matches, verb }) catch null;
         out_mutex.lockUncancelable(io);
         if (msg) |m| stdout.writeAll(m) catch {};
         out_mutex.unlock(io);
