@@ -96,12 +96,29 @@ fn globStar(pat: []const u8, name: []const u8) bool {
 }
 
 fn segmentGlob(pat: []const u8, name: []const u8) bool {
-    if (pat.len == 0) return name.len == 0;
-    if (pat[0] == '*') return segmentGlob(pat[1..], name) or (name.len > 0 and segmentGlob(pat, name[1..]));
-    if (pat[0] == '?') return name.len > 0 and segmentGlob(pat[1..], name[1..]);
-    if (name.len == 0) return false;
-    if (pat[0] != name[0]) return false;
-    return segmentGlob(pat[1..], name[1..]);
+    var pi: usize = 0;
+    var ni: usize = 0;
+    var star_pi: ?usize = null;
+    var star_ni: usize = 0;
+
+    while (ni < name.len) {
+        if (pi < pat.len and (pat[pi] == '?' or pat[pi] == name[ni])) {
+            pi += 1;
+            ni += 1;
+        } else if (pi < pat.len and pat[pi] == '*') {
+            star_pi = pi;
+            star_ni = ni;
+            pi += 1;
+        } else if (star_pi) |sp| {
+            pi = sp + 1;
+            star_ni += 1;
+            ni = star_ni;
+        } else {
+            return false;
+        }
+    }
+    while (pi < pat.len and pat[pi] == '*') pi += 1;
+    return pi == pat.len;
 }
 
 pub fn anyMatch(patterns: []const []const u8, path: []const u8) bool {
