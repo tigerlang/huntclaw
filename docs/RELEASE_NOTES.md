@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.7
+
+- fix: n_threads-1 underflowed to a huge allocation when getCpuCount() returned 0
+- feat: add -b/--backup, writes a .bak copy of each file right before it's replaced
+
+
 ## v0.1
 
 - docs: README with build guide, benchmarks, usage
