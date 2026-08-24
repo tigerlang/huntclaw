@@ -317,6 +317,21 @@ fn processFileBuffered(
 
     if (opts.dry_run) return;
 
+    if (opts.backup) {
+        writeBackup(gpa, io, path, data) catch |err| {
+            out_mutex.lockUncancelable(io);
+            defer out_mutex.unlock(io);
+            stdout.print("huntclaw: backup failed for {s}, skipping write: {t}\n", .{ path, err }) catch {};
+            return;
+        };
+    }
+
     file.writePositionalAll(io, result.output, 0) catch return;
     file.setLength(io, result.output.len) catch {};
+}
+
+fn writeBackup(gpa: std.mem.Allocator, io: Io, path: []const u8, data: []const u8) !void {
+    const bak_path = try std.fmt.allocPrint(gpa, "{s}.bak", .{path});
+    defer gpa.free(bak_path);
+    try Dir.cwd().writeFile(io, .{ .sub_path = bak_path, .data = data, .flags = .{} });
 }

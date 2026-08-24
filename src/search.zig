@@ -8,6 +8,7 @@ pub const Options = struct {
     no_skip_list: bool = false,
     show_lines: bool = false,
     stats_json: bool = false,
+    backup: bool = false,
     max_depth: ?usize = null,
     exts: []const []const u8 = &.{},
     extra_skip_dirs: []const []const u8 = &.{},

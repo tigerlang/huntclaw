@@ -66,6 +66,8 @@ huntclaw -q foo bar .                     # suppress per-file output
 huntclaw -p -l "unwrap()" src/            # show line number and match text
 huntclaw -p --max-depth 1 TODO .          # only scan the top-level directory
 huntclaw -p --stats-only TODO . | jq      # JSON summary for scripting
+huntclaw -b foo bar .                     # back up each file to .bak before replacing
+huntclaw init                             # scaffold a .huntclaw-rc template
 ```
 
 Options:
@@ -77,12 +79,15 @@ Options:
 | `-n, --dry-run` | report what would change, write nothing |
 | `-e, --ext <ext>` | restrict to files with this extension (repeatable) |
 | `-q, --quiet` | suppress per-file lines, keep the summary |
+| `-b, --backup` | write a `.bak` copy of each file before replacing |
 | `-n-s-l, --no-skip-list` | do not skip `.git`, `node_modules`, and other default dirs |
 | `-l, --line` | show line number and matching line text (search mode) |
 | `--max-depth <N>` | limit directory recursion depth (0 = given dirs only) |
 | `--stats-only` | print only a JSON summary, no per-file output |
+| `-ex, --exclude <glob>` | exclude files/dirs matching this glob (repeatable) |
 | `-v, --version` | print version and exit |
 | `-h, --help` | show usage |
+| `init` | create a `.huntclaw-rc` template in the current directory |
 
 huntclaw skips binary files automatically and ignores `.git`, `node_modules`,
 `.zig-cache`, `zig-out`, `target`, `.svn`, `.hg` when walking directories

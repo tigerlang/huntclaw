@@ -3,7 +3,7 @@ const search = @import("search.zig");
 const walk = @import("walk.zig");
 const rcfile = @import("rcfile.zig");
 
-const version = "0.6";
+const version = "0.7";
 
 const usage =
     \\huntclaw - fast find-and-replace
@@ -19,6 +19,7 @@ const usage =
     \\  -n, --dry-run         show what would change without writing
     \\  -e, --ext <ext>       only process files with this extension (repeatable)
     \\  -q, --quiet           suppress per-file output
+    \\  -b, --backup          write a .bak copy of each file before replacing
     \\  -n-s-l, --no-skip-list  do not skip .git, node_modules, and other default dirs
     \\  -l, --line            show line number and matching line text (search mode)
     \\  --max-depth <N>       limit directory recursion depth (0 = given dirs only)
@@ -134,6 +135,8 @@ pub fn main(init: std.process.Init) !u8 {
             opts.dry_run = true;
         } else if (std.mem.eql(u8, a, "-q") or std.mem.eql(u8, a, "--quiet")) {
             opts.quiet = true;
+        } else if (std.mem.eql(u8, a, "-b") or std.mem.eql(u8, a, "--backup")) {
+            opts.backup = true;
         } else if (std.mem.eql(u8, a, "-n-s-l") or std.mem.eql(u8, a, "--no-skip-list")) {
             opts.no_skip_list = true;
         } else if (std.mem.eql(u8, a, "-l") or std.mem.eql(u8, a, "--line")) {
