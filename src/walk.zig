@@ -150,7 +150,7 @@ fn processParallel(
     stdout: *Io.Writer,
 ) !void {
     const cpu_count = std.Thread.getCpuCount() catch 4;
-    const n_threads = @min(cpu_count, files.len);
+    const n_threads = @max(1, @min(cpu_count, files.len));
 
     var out_mutex = Io.Mutex.init;
     var worker = Worker{
