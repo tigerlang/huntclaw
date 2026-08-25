@@ -182,7 +182,11 @@ pub fn main(init: std.process.Init) !u8 {
     opts.excludes = excludes.items;
 
     var stats = search.Stats{};
+    var seen_paths = std.StringHashMap(void).init(gpa);
+    defer seen_paths.deinit();
     for (paths.items) |p| {
+        const gop = try seen_paths.getOrPut(p);
+        if (gop.found_existing) continue;
         try walk.process(gpa, io, p, pattern.?, replacement orelse "", &opts, &stats, stdout, stderr);
     }
 
