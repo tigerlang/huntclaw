@@ -1,11 +1,5 @@
 # Release Notes
 
-## v0.7
-
-- fix: n_threads-1 underflowed to a huge allocation when getCpuCount() returned 0
-- feat: add -b/--backup, writes a .bak copy of each file right before it's replaced
-
-
 ## v0.1
 
 - docs: README with build guide, benchmarks, usage
@@ -58,4 +52,10 @@
 - fix: glob matcher could hang on pathological * patterns, now linear time
 - fix: dry-run per-file message said 'replaced' instead of 'would replace'
 - feat: add init command to scaffold a .huntclaw-rc template
+
+
+## v0.7
+
+- fix: n_threads-1 underflowed to a huge allocation when getCpuCount() returned 0
+- feat: add -b/--backup, writes a .bak copy of each file right before it's replaced
 
