@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.8
+
+- fix: duplicate input paths were walked and processed independently, causing double-counted stats and unsynchronized concurrent read/write on the same files
+
+
 ## v0.7
 
 - fix: n_threads-1 underflowed to a huge allocation when getCpuCount() returned 0
