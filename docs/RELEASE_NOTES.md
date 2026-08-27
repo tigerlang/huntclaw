@@ -3,6 +3,7 @@
 ## v0.8
 
 - fix: duplicate input paths were walked and processed independently, causing double-counted stats and unsynchronized concurrent read/write on the same files
+- fix: oversized-file error now reports actual size and the limit instead of a bare StreamTooLong
 
 
 ## v0.7
