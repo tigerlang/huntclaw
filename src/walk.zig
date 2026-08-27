@@ -206,7 +206,10 @@ fn readFileFast(gpa: std.mem.Allocator, io: Io, path: []const u8, mode: Dir.Open
 
     const size = st.size;
     if (size == 0) return .{ .file = file, .data = &.{} };
-    if (size > max_file_size) return error.StreamTooLong;
+    if (size > max_file_size) {
+        file.close(io);
+        return error.FileTooLarge;
+    }
 
     const buf = try gpa.alloc(u8, size);
     errdefer gpa.free(buf);
@@ -264,7 +267,16 @@ fn processFileBuffered(
     const opened = (readFileFast(gpa, io, path, mode) catch |err| {
         out_mutex.lockUncancelable(io);
         defer out_mutex.unlock(io);
-        stdout.print("huntclaw: cannot read {s}: {t}\n", .{ path, err }) catch {};
+        if (err == error.FileTooLarge) {
+            const size = (Dir.cwd().statFile(io, path, .{}) catch null);
+            if (size) |s| {
+                stdout.print("huntclaw: skipping {s}: {d} bytes exceeds the {d} byte limit (huntclaw reads whole files into memory, no streaming)\n", .{ path, s.size, max_file_size }) catch {};
+            } else {
+                stdout.print("huntclaw: skipping {s}: file exceeds the {d} byte limit\n", .{ path, max_file_size }) catch {};
+            }
+        } else {
+            stdout.print("huntclaw: cannot read {s}: {t}\n", .{ path, err }) catch {};
+        }
         return;
     }) orelse return;
     var file = opened.file;
