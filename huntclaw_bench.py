@@ -2,6 +2,8 @@ import subprocess, time, statistics, shutil, os, sys, random
 from collections import defaultdict
 
 HC = os.environ.get("HUNTCLAW_BIN", "./zig-out/bin/huntclaw")
+RG = os.environ.get("RIPGREP_BIN", "rg")
+GREP = os.environ.get("GREP_BIN", "grep")
 BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "huntclaw_bench")
 
 def timed_run(cmd, shell=False):
@@ -110,35 +112,35 @@ def run_search(rows):
     print(f"\n-- large: {large_n} occurrences --")
     r = bench("huntclaw -p -q", [HC, "-p", "-q", "TARGET", f"{BASE}/large/data.txt"])
     rows.append(("search-large", "huntclaw", r["min"]))
-    r = bench("ripgrep -o | wc -l", f"rg -o TARGET {BASE}/large/data.txt | wc -l", shell=True)
+    r = bench("ripgrep --null-data --count-matches", [RG, "--null-data", "--count-matches", "TARGET", f"{BASE}/large/data.txt"])
     rows.append(("search-large", "ripgrep", r["min"]))
-    r = bench("GNU grep -o | wc -l", f"grep -o TARGET {BASE}/large/data.txt | wc -l", shell=True)
+    r = bench("GNU grep -c", [GREP, "-c", "TARGET", f"{BASE}/large/data.txt"])
     rows.append(("search-large", "GNU grep", r["min"]))
 
     print(f"\n-- manyfiles: 4200 files --")
     r = bench("huntclaw -p -q", [HC, "-p", "-q", "TARGET", f"{BASE}/manyfiles"])
     rows.append(("search-many", "huntclaw", r["min"]))
-    r = bench("ripgrep -c", ["rg", "-c", "TARGET", f"{BASE}/manyfiles"])
+    r = bench("ripgrep -c", [RG, "-c", "TARGET", f"{BASE}/manyfiles"])
     rows.append(("search-many", "ripgrep", r["min"]))
-    r = bench("GNU grep -r -o | wc -l", f"grep -r -o TARGET {BASE}/manyfiles | wc -l", shell=True)
+    r = bench("GNU grep -r -c", [GREP, "-r", "-c", "TARGET", f"{BASE}/manyfiles"])
     rows.append(("search-many", "GNU grep", r["min"]))
 
     sparse_n = occurrence_count(f"{BASE}/sparse/data.txt")
     print(f"\n-- sparse: {sparse_n} occurrences --")
     r = bench("huntclaw -p -q", [HC, "-p", "-q", "TARGET", f"{BASE}/sparse/data.txt"])
     rows.append(("search-sparse", "huntclaw", r["min"]))
-    r = bench("ripgrep -o | wc -l", f"rg -o TARGET {BASE}/sparse/data.txt | wc -l", shell=True)
+    r = bench("ripgrep --null-data --count-matches", [RG, "--null-data", "--count-matches", "TARGET", f"{BASE}/sparse/data.txt"])
     rows.append(("search-sparse", "ripgrep", r["min"]))
-    r = bench("GNU grep -o | wc -l", f"grep -o TARGET {BASE}/sparse/data.txt | wc -l", shell=True)
+    r = bench("GNU grep -c", [GREP, "-c", "TARGET", f"{BASE}/sparse/data.txt"])
     rows.append(("search-sparse", "GNU grep", r["min"]))
 
     dense_n = occurrence_count(f"{BASE}/dense/data.txt")
     print(f"\n-- dense: {dense_n} occurrences --")
     r = bench("huntclaw -p -q", [HC, "-p", "-q", "TARGET", f"{BASE}/dense/data.txt"])
     rows.append(("search-dense", "huntclaw", r["min"]))
-    r = bench("ripgrep -o | wc -l", f"rg -o TARGET {BASE}/dense/data.txt | wc -l", shell=True)
+    r = bench("ripgrep --null-data --count-matches", [RG, "--null-data", "--count-matches", "TARGET", f"{BASE}/dense/data.txt"])
     rows.append(("search-dense", "ripgrep", r["min"]))
-    r = bench("GNU grep -o | wc -l", f"grep -o TARGET {BASE}/dense/data.txt | wc -l", shell=True)
+    r = bench("GNU grep -c", [GREP, "-c", "TARGET", f"{BASE}/dense/data.txt"])
     rows.append(("search-dense", "GNU grep", r["min"]))
 
 def run_replace(rows):

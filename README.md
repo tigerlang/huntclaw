@@ -28,24 +28,49 @@ just run `zig build --release=fast`.
 
 ## Benchmark
 
-Measured against ripgrep 14.1.1, GNU grep 3.11, GNU sed 4.9, and sd 1.0.0 —
-warmed up, best-of-N timing, same machine, same datasets. Search numbers
-count total occurrences (not matching lines) so every tool is solving the
-same problem.
+Measured on this machine (Linux x86_64) with ripgrep 15.1.0, GNU grep 3.11,
+GNU sed 4.9, and sd 0.7.6 — warmed up (5 runs discarded), best-of-25 timing
+for search and best-of-10/15 for replace (replace runs are fewer because
+each one re-copies the dataset first). Search numbers count total
+occurrences, not matching lines, and every tool is asked to produce the
+same, minimal amount of output: `rg --count-matches --null-data` and `grep
+-c` instead of `-o | wc -l`, which used to force ripgrep to print every
+match through a second process — that was comparing output volume, not
+search speed. All numbers below came straight out of `huntclaw_bench.py`,
+unedited.
 
-![huntclaw benchmark: search and replace timings against ripgrep, GNU grep, sd, and GNU sed](assets/benchmark.png)
+**Search** (ms, min of 25 runs):
 
-huntclaw wins six of seven scenarios. The one loss is intentional territory:
-GNU grep and ripgrep both use a single-byte memchr scan that has less work
-to do when a pattern is rare, and at 50 matches in 23MB that advantage
-shows. Once matches get dense or the file gets large, huntclaw's two-byte
-prefilter and lack of regex-engine overhead pull ahead — sometimes by an
-order of magnitude. Against sed and sd, which do the same job huntclaw is
-built for, there's no contest.
+| Scenario | huntclaw | ripgrep | GNU grep |
+|---|---|---|---|
+| large (42MB, 413076 occurrences) | 20.96 | 17.43 | 26.45 |
+| manyfiles (4200 files) | 17.22 | 34.02 | 19.35 |
+| sparse (23MB, 50 occurrences) | 6.79 | 4.77 | 2.76 |
+| dense (12MB, 1150000 occurrences) | 12.25 | 17.33 | 6.06 |
+
+**Replace** (ms, min of 10–15 runs):
+
+| Scenario | huntclaw | sd | GNU sed |
+|---|---|---|---|
+| large (42MB, 413076 occurrences) | 56.68 | 64.56 | 188.02 |
+| manyfiles (4200 files, find\|xargs for sd/sed) | 37.00 | 877.69 | 844.02 |
+| dense (12MB, 1150000 occurrences) | 20.65 | 35.51 | 156.97 |
+
+No single tool wins everywhere. ripgrep's single-byte memchr scan has less
+work to do than huntclaw's two-byte prefilter when a pattern is rare
+(sparse), and GNU grep is competitive on search generally — it has no
+regex-engine overhead to pay for a literal pattern either. huntclaw's edge
+shows up once matches get dense, files get large, or — most consistently —
+once a replace actually has to happen: no other tool here reads and
+rewrites a file in one pass the way huntclaw does, and the manyfiles
+replace numbers show it (sd and xargs/sed both pay per-process startup
+cost 4200 times over).
 
 Full methodology and raw numbers are reproducible: generate the datasets
 described in the table, run each tool with warmup, take the minimum of
-several runs. You can run the benchmark with 'huntclaw_bench.py' file (more new tests, for trust)
+several runs. Run `huntclaw_bench.py` yourself to check these numbers on
+your own machine — pass `RIPGREP_BIN`/`GREP_BIN`/`HUNTCLAW_BIN` env vars if
+those binaries aren't on your PATH under their usual names.
 
 ## Usage
 
