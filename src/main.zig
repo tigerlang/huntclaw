@@ -32,6 +32,11 @@ const usage =
     \\Reads .huntclaw-rc from the current directory if present.
     \\See docs/huntclaw-rc.txt for its format.
     \\
+    \\Exit codes:
+    \\  0   at least one match found (or replaced), no errors
+    \\  1   ran fine, but found zero matches
+    \\  2   invalid arguments, or one or more files/dirs could not be processed
+    \\
 ;
 
 fn initRc(io: std.Io, stdout: *std.Io.Writer, stderr: *std.Io.Writer) !u8 {
@@ -193,12 +198,13 @@ pub fn main(init: std.process.Init) !u8 {
     const m = stats.matches.load(.monotonic);
     const fm = stats.files_matched.load(.monotonic);
     const fs = stats.files_scanned.load(.monotonic);
+    const errs = stats.errors.load(.monotonic);
     const mode: []const u8 = if (opts.pattern_only) "search" else if (opts.dry_run) "dry_run" else "replace";
 
     if (opts.stats_json) {
         try stdout.print(
-            "{{\"mode\":\"{s}\",\"matches\":{d},\"files_matched\":{d},\"files_scanned\":{d}}}\n",
-            .{ mode, m, fm, fs },
+            "{{\"mode\":\"{s}\",\"matches\":{d},\"files_matched\":{d},\"files_scanned\":{d},\"errors\":{d}}}\n",
+            .{ mode, m, fm, fs, errs },
         );
     } else if (opts.pattern_only) {
         try stdout.print("{d} matches in {d} files ({d} scanned)\n", .{ m, fm, fs });
@@ -208,11 +214,13 @@ pub fn main(init: std.process.Init) !u8 {
         try stdout.print("{d} matches replaced in {d} files ({d} scanned)\n", .{ m, fm, fs });
     }
 
+    if (errs > 0) return 2;
+    if (m == 0) return 1;
     return 0;
 }
 
 fn fail(stderr: *std.Io.Writer, msg: []const u8) u8 {
     stderr.print("huntclaw: {s}\n", .{msg}) catch {};
     stderr.flush() catch {};
-    return 1;
+    return 2;
 }

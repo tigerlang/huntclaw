@@ -19,6 +19,7 @@ pub const Stats = struct {
     matches: std.atomic.Value(usize) = .init(0),
     files_matched: std.atomic.Value(usize) = .init(0),
     files_scanned: std.atomic.Value(usize) = .init(0),
+    errors: std.atomic.Value(usize) = .init(0),
 
     pub fn addMatches(self: *Stats, n: usize) void {
         _ = self.matches.fetchAdd(n, .monotonic);
@@ -28,6 +29,9 @@ pub const Stats = struct {
     }
     pub fn incFilesScanned(self: *Stats) void {
         _ = self.files_scanned.fetchAdd(1, .monotonic);
+    }
+    pub fn incErrors(self: *Stats) void {
+        _ = self.errors.fetchAdd(1, .monotonic);
     }
 };
 

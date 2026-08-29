@@ -54,6 +54,7 @@ pub fn process(
 ) !void {
     const cwd = Dir.cwd();
     const stat = cwd.statFile(io, path, .{}) catch |err| {
+        stats.incErrors();
         try stderr.print("huntclaw: cannot access {s}: {t}\n", .{ path, err });
         return;
     };
@@ -68,7 +69,7 @@ pub fn process(
         for (files.items) |f| gpa.free(f);
         files.deinit(gpa);
     }
-    try collect(gpa, io, path, opts, &files, stderr, 0);
+    try collect(gpa, io, path, opts, &files, stats, stderr, 0);
 
     if (files.items.len < parallel_threshold) {
         for (files.items) |f| try processFile(gpa, io, f, pattern, replacement, opts, stats, stdout);
@@ -84,10 +85,12 @@ fn collect(
     dir_path: []const u8,
     opts: *const search.Options,
     files: *std.ArrayList([]const u8),
+    stats: *search.Stats,
     stderr: *Io.Writer,
     depth: usize,
 ) !void {
     var dir = Dir.cwd().openDir(io, dir_path, .{ .iterate = true }) catch |err| {
+        stats.incErrors();
         try stderr.print("huntclaw: cannot open {s}: {t}\n", .{ dir_path, err });
         return;
     };
@@ -103,7 +106,7 @@ fn collect(
             }
             const sub = try std.fs.path.join(gpa, &.{ dir_path, entry.name });
             defer gpa.free(sub);
-            try collect(gpa, io, sub, opts, files, stderr, depth + 1);
+            try collect(gpa, io, sub, opts, files, stats, stderr, depth + 1);
         } else if (entry.kind == .file) {
             if (!extMatches(entry.name, opts.exts)) continue;
             if (rcfile.anyMatch(opts.excludes, entry.name)) continue;
@@ -269,6 +272,7 @@ fn processFileBuffered(
     const mode: Dir.OpenFileOptions.Mode = if (will_write) .read_write else .read_only;
 
     const opened = (readFileFast(gpa, io, path, mode) catch |err| {
+        stats.incErrors();
         out_mutex.lockUncancelable(io);
         defer out_mutex.unlock(io);
         if (err == error.FileTooLarge) {
@@ -317,7 +321,13 @@ fn processFileBuffered(
         return;
     }
 
-    const result = search.replaceAll(gpa, data, &matcher, replacement) catch return;
+    const result = search.replaceAll(gpa, data, &matcher, replacement) catch {
+        stats.incErrors();
+        out_mutex.lockUncancelable(io);
+        defer out_mutex.unlock(io);
+        stdout.print("huntclaw: cannot process {s}: out of memory\n", .{path}) catch {};
+        return;
+    };
     defer gpa.free(result.output);
     if (result.matches == 0) return;
 
@@ -335,6 +345,7 @@ fn processFileBuffered(
 
     if (opts.backup) {
         writeBackup(gpa, io, path, data) catch |err| {
+            stats.incErrors();
             out_mutex.lockUncancelable(io);
             defer out_mutex.unlock(io);
             stdout.print("huntclaw: backup failed for {s}, skipping write: {t}\n", .{ path, err }) catch {};
@@ -342,7 +353,13 @@ fn processFileBuffered(
         };
     }
 
-    file.writePositionalAll(io, result.output, 0) catch return;
+    file.writePositionalAll(io, result.output, 0) catch {
+        stats.incErrors();
+        out_mutex.lockUncancelable(io);
+        defer out_mutex.unlock(io);
+        stdout.print("huntclaw: failed to write {s}\n", .{path}) catch {};
+        return;
+    };
     file.setLength(io, result.output.len) catch {};
 }
 
