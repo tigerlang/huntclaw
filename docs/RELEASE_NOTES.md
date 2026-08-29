@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.9
+
+- fix: -l printed the same line twice when it had more than one match on it
+- feat: exit codes now reflect the outcome — 0 for a match/replace, 1 for zero matches, 2 for an error (bad args or a file/dir that couldn't be processed); per-file errors are also counted in --stats-only
+
+
 ## v0.8
 
 - fix: duplicate input paths were walked and processed independently, causing double-counted stats and unsynchronized concurrent read/write on the same files
