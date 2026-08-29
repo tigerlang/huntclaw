@@ -226,6 +226,7 @@ fn printMatchLines(path: []const u8, data: []const u8, matcher: *const search.Ma
     var line_no: usize = 1;
     var line_start: usize = 0;
     var scanned_to: usize = 0;
+    var last_printed_line: usize = 0;
 
     out_mutex.lockUncancelable(io);
     defer out_mutex.unlock(io);
@@ -240,9 +241,12 @@ fn printMatchLines(path: []const u8, data: []const u8, matcher: *const search.Ma
                 }
                 scanned_to += 1;
             }
-            const line_end = std.mem.indexOfScalarPos(u8, data, line_start, '\n') orelse data.len;
-            const line = std.mem.trimEnd(u8, data[line_start..line_end], "\r");
-            stdout.print("{s}:{d}: {s}\n", .{ path, line_no, line }) catch return count;
+            if (line_no != last_printed_line) {
+                const line_end = std.mem.indexOfScalarPos(u8, data, line_start, '\n') orelse data.len;
+                const line = std.mem.trimEnd(u8, data[line_start..line_end], "\r");
+                stdout.print("{s}:{d}: {s}\n", .{ path, line_no, line }) catch return count;
+                last_printed_line = line_no;
+            }
         }
         pos = idx + matcher.pattern.len;
     }
